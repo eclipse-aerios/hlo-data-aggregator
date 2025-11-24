@@ -1,0 +1,145 @@
+{
+  "service_component_definition": {
+    "id": "urn:ngsi-ld:Service:05:Component:01",
+    "type": "ServiceComponent",
+    "service": "urn:ngsi-ld:Service:05",
+    "infrastructureElementRequirements": {
+      "id": "urn:ngsi-ld:Service:05:Component:01:InfrastructureElementRequirements",
+      "type": "InfrastructureElementRequirements",
+      "infrastructureElement": {
+        "id": "urn:ngsi-ld:InfrastructureElement:ncsrd-w1",
+        "type": "InfrastructureElement",
+        "domain": {
+          "id": "urn:ngsi-ld:Domain:1",
+          "type": "Domain",
+          "description": "NCSRD aeriOS MVP Domain",
+          "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+          "owner": {
+            "id": "urn:ngsi-ld:Organization:NCSRD",
+            "type": "Organization",
+            "name": "NCSRD"
+          },
+          "isEntrypoint": false,
+          "domainStatus": "urn:ngsi-ld:DomainStatus:Functional"
+        },
+        "internalIpAddress": "10.220.2.102",
+        "macAddress": "",
+        "lowLevelOrchestrator": {
+          "id": "urn:ngsi-ld:LowLevelOrchestrator:1",
+          "type": "LowLevelOrchestrator",
+          "domain": {
+            "id": "urn:ngsi-ld:Domain:1",
+            "type": "Domain",
+            "description": "NCSRD aeriOS MVP Domain",
+            "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+            "owner": {
+              "id": "urn:ngsi-ld:Organization:NCSRD",
+              "type": "Organization",
+              "name": "NCSRD"
+            },
+            "isEntrypoint": false,
+            "domainStatus": "urn:ngsi-ld:DomainStatus:Functional"
+          },
+          "orchestrationType": "urn:ngsi-ld:OrchestrationType:Kubernetes"
+        },
+        "cpuCores": 2,
+        "currentCpuUsage": 18,
+        "ramCapacity": 7940,
+        "availableRam": 4564,
+        "currentRamUsage": 3376,
+        "avgPowerConsumption": 3,
+        "currentPowerConsumption": 3,
+        "realTimeCapable": false,
+        "cpuArchitecture": "urn:ngsi-ld:CpuArchitecture:x64",
+        "operatingSystem": "urn:ngsi-ld:OperatingSystem:Linux",
+        "infrastructureElementTier": "urn:ngsi-ld:InfrastructureElementTier:Cloud",
+        "infrastructureElementStatus": "urn:ngsi-ld:InfrastructureElementStatus:Ready",
+        "location": {
+          "type": "Point",
+          "coordinates": [
+            37.9715,
+            23.7257
+          ]
+        }
+      },
+      "requiredCpuUsage": null,
+      "requiredRam": null,
+      "cpuArchitecture": null,
+      "realTimeCapable": null,
+      "area": null
+    },
+    "containerImage": "nginx",
+    "networkPorts": [
+      {
+        "id": "urn:ngsi-ld:NetworkPort:03",
+        "type": "NetworkPort",
+        "portNumber": 80,
+        "portProtocol": "TCP"
+      },
+      {
+        "id": "urn:ngsi-ld:NetworkPort:04",
+        "type": "NetworkPort",
+        "portNumber": 443,
+        "portProtocol": "TCP"
+      }
+    ]
+  },
+  "infrastructure_element_candidates": [
+    {
+      "id": "urn:ngsi-ld:InfrastructureElement:ncsrd-w1",
+      "type": "InfrastructureElement",
+      "domain": {
+        "id": "urn:ngsi-ld:Domain:1",
+        "type": "Domain",
+        "description": "NCSRD aeriOS MVP Domain",
+        "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+        "owner": {
+          "id": "urn:ngsi-ld:Organization:NCSRD",
+          "type": "Organization",
+          "name": "NCSRD"
+        },
+        "isEntrypoint": false,
+        "domainStatus": "urn:ngsi-ld:DomainStatus:Functional"
+      },
+      "internalIpAddress": "10.220.2.102",
+      "macAddress": "",
+      "lowLevelOrchestrator": {
+        "id": "urn:ngsi-ld:LowLevelOrchestrator:1",
+        "type": "LowLevelOrchestrator",
+        "domain": {
+          "id": "urn:ngsi-ld:Domain:1",
+          "type": "Domain",
+          "description": "NCSRD aeriOS MVP Domain",
+          "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+          "owner": {
+            "id": "urn:ngsi-ld:Organization:NCSRD",
+            "type": "Organization",
+            "name": "NCSRD"
+          },
+          "isEntrypoint": false,
+          "domainStatus": "urn:ngsi-ld:DomainStatus:Functional"
+        },
+        "orchestrationType": "urn:ngsi-ld:OrchestrationType:Kubernetes"
+      },
+      "cpuCores": 2,
+      "currentCpuUsage": 18,
+      "ramCapacity": 7940,
+      "availableRam": 4564,
+      "currentRamUsage": 3376,
+      "avgPowerConsumption": 3,
+      "currentPowerConsumption": 3,
+      "realTimeCapable": false,
+      "cpuArchitecture": "urn:ngsi-ld:CpuArchitecture:x64",
+      "operatingSystem": "urn:ngsi-ld:OperatingSystem:Linux",
+      "infrastructureElementTier": "urn:ngsi-ld:InfrastructureElementTier:Cloud",
+      "infrastructureElementStatus": "urn:ngsi-ld:InfrastructureElementStatus:Ready",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          37.9715,
+          23.7257
+        ]
+      }
+    }
+  ]
+}

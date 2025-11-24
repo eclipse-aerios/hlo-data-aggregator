@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "hlo.proto";
+
+message HLOFEInput {
+    Service service = 1;
+}
+
+message ServiceComponentRequirement {
+    ServiceComponent service_component_definition = 2;
+    repeated InfrastructureElement infrastructure_element_candidates = 1;
+}
+
+message HLOAllocatorOutput {
+    repeated ServiceComponentRequirement service_component_requirements  = 1;
+}

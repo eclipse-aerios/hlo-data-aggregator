@@ -1,0 +1,34 @@
+# hlo data aggregator deployment
+image:
+  repository: eclipseaerios/data-aggregator:v3.0.0
+  pullPolicy: Always
+
+replicas: 1
+
+selectorLabels:
+  app: hlo-data-aggr
+  comp: aeriOS-core
+  tier: hlo
+
+#service
+
+service:
+  type: ClusterIP
+  port: 8083
+  targetPort: 8002
+
+# Variables in src/app/config.py
+
+EnvVar:
+  #ngsi-ld
+  url: "http://orion-ld-broker.default.svc.cluster.local"
+  port: "1026"
+  #Redpanda
+  bootstrapServers: "redpanda-0.redpanda.redpanda.svc.cluster.local:9093"
+  groupId: "python-consumer"
+  autoOffsetReset: "earliest"
+  consumerTopic: "fe2data"
+  producerTopic: "data2allocator"
+  #aeriOS-k8s-shim
+  k8sShimUrl: "http://aeriOS-k8s-shim-service.default.svc.cluster.local"
+  k8sShimPort: "8085"

@@ -1,0 +1,63 @@
+
+syntax = "proto3";
+
+message Domain {
+    string id = 1;
+}
+
+message Service {
+    string id = 1;
+}
+
+message LowLevelOrchestrator {
+    string id = 1;
+    string orchestration_type = 3;
+    Domain domain = 2;
+}
+
+message InfrastructureElement {
+    string id = 1;
+    float total_ram = 2;
+    float cpu_cores = 3;
+    float avg_power_consumption = 4;
+    bool real_time_capable = 5;
+    float current_ram = 6;
+    float current_cpu_usage = 7;
+    float current_power_consumption = 8;
+    Domain domain = 9;
+    LowLevelOrchestrator low_level_orchestrator = 10;
+    string hostname = 11;
+    string container_technology = 12;
+}
+
+message Port {
+    int32 number = 1;
+}    
+
+message ServiceComponent {
+    string id = 1;
+    string image = 2;
+    repeated Port ports = 3;
+    Service service = 4;
+    ServiceComponentConstraints service_component_constraints = 5;
+    optional InfrastructureElement infrastructure_element = 6;
+    repeated ServiceComponentKeyValue cliArgs = 7;
+    repeated ServiceComponentKeyValue envVars = 8;
+    bool exposePorts = 9;
+    bool isJob = 10;
+    bool is_private = 11;
+    RepoCredentials credentials = 12;
+}
+
+message ServiceComponentConstraints {
+    map<string, float> constraints = 1;
+}
+message ServiceComponentKeyValue {
+    string key = 1;
+    string value = 2;
+}
+
+message RepoCredentials {
+  string username = 1;
+  string password = 2;
+}

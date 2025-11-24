@@ -1,0 +1,6 @@
+venv*
+requirements*
+__pycache__
+.vscode
+data-aggregator/protobuf
+log/
