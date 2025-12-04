@@ -1,6 +1,6 @@
 # hlo data aggregator deployment
 image:
-  repository: eclipseaerios/data-aggregator:v3.0.0
+  repository: eclipseaerios/hlo-data-aggregator:v3.0.0
   pullPolicy: Always
 
 replicas: 1

@@ -11,7 +11,7 @@ on:
 
 env:
   IMAGE_NAME: eclipseaerios/hlo-data-aggregator
-  VERSION: 1.0.0
+  VERSION: v3.0.0
 
 jobs:
   build-and-push:
