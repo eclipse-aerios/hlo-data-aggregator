@@ -5,8 +5,8 @@ import threading
 from fastapi import APIRouter, BackgroundTasks
 from app.loop import run
 from app.utils.log import get_app_logger
-from app.app_models.ie_alert_ep_models import IEAlert
-from app.utils import ngsild
+from app.app_models.api.ie_alert_ep_models import IEAlert
+from app.services import ngsild
 
 logger = get_app_logger()
 

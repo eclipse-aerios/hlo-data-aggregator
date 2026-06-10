@@ -2,11 +2,12 @@
 Docstring
 '''
 from fastapi import FastAPI
-from app.routers import router
+from app.api.routers import router
 
 # FastAPI object customization
 FASTAPI_TITLE = "IE-Resource-Alert-EP"
-FASTAPI_DESCRIPTION = "HLO component, part of Data-Aggregator, to receive alert and re-orchestration events"
+FASTAPI_DESCRIPTION = "HLO component," \
+    " part of Data-Aggregator, to receive alert and re-orchestration events"
 FASTAPI_VERSION = "0.109.0"
 FASTAPI_OPEN_API_URL = "/docs"
 FASTAPI_DOCS_URL = "/"

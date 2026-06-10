@@ -30,10 +30,18 @@ message InfrastructureElement {
     string container_technology = 12;
 }
 
-message Port {
-    int32 number = 1;
-}    
+enum PortProtocol {
+  PORT_PROTOCOL_UNSPECIFIED = 0;
+  TCP = 1;
+  UDP = 2;
+  SCTP = 3;
+}
 
+message Port {
+  int32 number = 1;
+  PortProtocol protocol = 2;
+}
+  
 message ServiceComponent {
     string id = 1;
     string image = 2;

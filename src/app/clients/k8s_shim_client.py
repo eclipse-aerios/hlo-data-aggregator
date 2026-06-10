@@ -1,5 +1,5 @@
 '''
-Module to query aeriOS service for retrieving token for m2m communication.
+Module to query aerOS service for retrieving token for m2m communication.
 Used when accessing CB, even when accessing it internally 
    as this is used to propagate federation requests to other Orion-LD brokers
 Used also for accessing Deployment engine local allocation manager 

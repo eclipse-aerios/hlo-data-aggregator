@@ -5,7 +5,7 @@ import json
 import requests
 import app.config as config
 from app.utils.decorators import catch_requests_exceptions
-from app import k8s_shim_client
+from app.clients import k8s_shim_client
 
 
 class CBClient:
@@ -26,7 +26,7 @@ class CBClient:
         self.headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'aeriOS': 'true',
+            'aerOS': 'true',
             'Authorization': f'Bearer {self.m2m_cb_token}'
         }
 
@@ -62,7 +62,7 @@ class CBClient:
     @catch_requests_exceptions
     def patch_entity(self, entity_id, upd_object: dict) -> dict:
         '''
-            Upadte entity in aeriOS contiunuum
+            Upadte entity in aerOS contiunuum
             :input
             @param entity_id: the id of the queried entity
             @param upd_object: the  json object to update the entity with
@@ -81,7 +81,7 @@ class CBClient:
     def patch_entity_attr(self, entity_id, attr, upd_object: dict) -> dict:
         '''
             Do NOT use this one, prefer patch above
-            Upadte entity in aeriOS contiunuum
+            Upadte entity in aerOS contiunuum
             :input
             @param entity_id: the id of the queried entity
             @attr: the attribute to be updated

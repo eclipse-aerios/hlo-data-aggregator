@@ -1,4 +1,4 @@
-""" Module with all aeriOS continumm models in pydantic"""
+""" Module with all aerOS continumm models in pydantic"""
 from typing import List, Literal, Optional
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class Area(BaseModel):
 
 class Organization(BaseModel):
     """
-    Pydantic representation of aeriOS Organization
+    Pydantic representation of aerOS Organization
     """
     id: str
     type: Literal["Organization"] = "Organization"
@@ -24,7 +24,7 @@ class Organization(BaseModel):
 
 class Domain(BaseModel):
     """
-    Pydantic representation of aeriOS continuum Domain
+    Pydantic representation of aerOS continuum Domain
     """
     id: str
     type: Literal["Domain"] = "Domain"
@@ -37,7 +37,7 @@ class Domain(BaseModel):
 
 class LowLevelOrchestrator(BaseModel):
     """
-    Pydantic representation of aeriOS LLO
+    Pydantic representation of aerOS LLO
     """
     id: str
     type: Literal["LowLevelOrchestrator"] = "LowLevelOrchestrator"
@@ -47,7 +47,7 @@ class LowLevelOrchestrator(BaseModel):
 
 class InfrastructureElement(BaseModel):
     """
-    Pydantic representation of aeriOS continuum IE
+    Pydantic representation of aerOS continuum IE
     """
     id: str
     type: Literal["InfrastructureElement"] = "InfrastructureElement"
@@ -86,7 +86,7 @@ class Service(BaseModel):
 
 class NetworkPort(BaseModel):
     """
-    aeriOS NetworkPort entity
+    aerOS NetworkPort entity
     """
     id: str
     type: Literal["NetworkPort"] = "NetworkPort"
@@ -165,7 +165,7 @@ class ServiceComponent(BaseModel):
 
 class ServiceComponentRequirement(BaseModel):
     """
-    Representation of Protobuf message with aeriOS continuum entities
+    Representation of Protobuf message with aerOS continuum entities
     """
     service_component_definition: ServiceComponent
     infrastructure_element_candidates: List[InfrastructureElement]
@@ -174,7 +174,7 @@ class ServiceComponentRequirement(BaseModel):
 class HLOAllocatorOutput(BaseModel):
     """
     Representation of Protobuf output message towards HLO-Allocator
-    with aeriOS continuum entities
+    with aerOS continuum entities
     """
     service_component_requirements: List[ServiceComponentRequirement]
 
@@ -191,3 +191,26 @@ class ServiceComponentStatusEnum:
     LOCATING = "urn:ngsi-ld:ServiceComponentStatus:Locating"
     REMOVING = "urn:ngsi-ld:ServiceComponentStatus:Removing"
     FINISHED = "urn:ngsi-ld:ServiceComponentStatus:Finished"
+
+
+class ServiceActionTypeEnum:
+    """
+    Service Action Type representation
+    To declare whether it is in deploying or destroying status
+    Update accordingly in FE according to request type and
+     update in Deployment Engine, to know service state. 
+    """
+    DEPLOYING = "DEPLOYING"
+    DESTROYING = "DESTROYING"
+    DEPLOYED = "DEPLOYED"
+    FINISHED = "FINISHED"
+    HANDLED = "urn:ngsi-ld:null"
+
+
+class ServiceStatusResponse(BaseModel):
+    """
+    Response model for service status
+    """
+    id: str
+    type: str
+    serviceComponentStatus: str

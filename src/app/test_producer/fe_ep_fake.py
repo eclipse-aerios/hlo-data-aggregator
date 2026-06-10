@@ -5,7 +5,7 @@
     $ python3 -m  app.test_producer.fe_ep_fake
 '''
 from confluent_kafka import Producer, KafkaException
-from app.utils.kafka_client import create_fake_feinput, serialize_to_bytes
+from app.clients.kafka_client import create_fake_feinput, serialize_to_bytes
 from app.config import CONSUMER_TOPIC, consumer_config
 from app.utils.log import get_app_logger
 

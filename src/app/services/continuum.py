@@ -1,8 +1,10 @@
 '''
   Module with funcions to check or update continuum state represantations
 '''
-from app.cb_client import CBClient
-from app.app_models.aeriOS_continuum import ServiceComponentStatusEnum as status
+from typing import List
+from app.clients.cb_client import CBClient
+from app.app_models.api.aeros_continuum import ServiceComponentStatusEnum as status
+from app.app_models.api.aeros_continuum import ServiceActionTypeEnum
 # from app.utils.log import get_app_logger
 
 
@@ -40,17 +42,59 @@ def check_service_component_exists(service_id: str,
     return False
 
 
-def set_service_failed(service_id):
+def get_service_components_list(entity_id: str) -> List[str]:
     """
-    Set all service components of a service to failed state.
+        Get a list with all ids of service components of a service
     """
     cb_client = CBClient()
+    scomponents_id_list = []
     service_components_list_json = cb_client.query_entities(
-        f'format=simplified&type=ServiceComponent&q=service=="{service_id}"&attrs=serviceComponentStatus'
-    )
+        f'format=simplified&type=ServiceComponent&q=service=="{entity_id}"')
     for scomponent in service_components_list_json:
-        set_service_component_status(scomponent_id=scomponent["id"],
-                                     scomponent_status=status.FAILED)
+        scomponents_id_list.append(scomponent.get('id'))
+    return scomponents_id_list
+
+
+def set_all_service_components_failed(service_id: str) -> None:
+    '''
+    Set all service components of a service to failed status in CB
+    
+    :param service_id: The service ID for which all components should be set to failed
+    :type service_id: str
+    '''
+    for scomponent_id in get_service_components_list(service_id):
+        set_service_component_status(scomponent_id, status.FAILED)
+
+
+def set_service_action_type(service_id: str, action_type: str) -> None:
+    '''
+    Set the action type of a service in CB
+    
+    :param service_id: The service ID for which the action type should be set
+    :type service_id: str
+    :param action_type: The action type to set (e.g., 'DEPLOYING', 'DESTROYING', 'FINISHED')
+    :type action_type: str
+    '''
+    cb_client = CBClient()
+    data = {
+        "actionType": {
+            "type": "Property",
+            "value": action_type,
+        }
+    }
+    cb_client.patch_entity(entity_id=service_id, upd_object=data)
+
+
+def set_service_failed(service_id: str) -> None:
+    """
+    Mark a service as failed:
+    - set all its service components to FAILED
+    - set the service actionType to FINISHED
+
+    This is used as a rollback when service allocation fails.
+    """
+    set_all_service_components_failed(service_id)
+    set_service_action_type(service_id, ServiceActionTypeEnum.FINISHED)
 
 
 def set_service_component_status(scomponent_id, scomponent_status: str):
@@ -67,8 +111,7 @@ def set_service_component_status(scomponent_id, scomponent_status: str):
     cb_client.patch_entity(entity_id=scomponent_id, upd_object=data)
 
 
-def set_service_component_status_attr(scomponent_id,
-                                      scomponent_status: str):
+def set_service_component_status_attr(scomponent_id, scomponent_status: str):
     """
         Set the status for a service component in CB
     """
@@ -96,8 +139,7 @@ def set_service_component_ie(scomponent_id, allocated_ie_id: str):
     cb_client.patch_entity(entity_id=scomponent_id, upd_object=data)
 
 
-def set_service_component_ie_attr(scomponent_id,
-                                  allocated_ie_id: str):
+def set_service_component_ie_attr(scomponent_id, allocated_ie_id: str):
     """
         Update IE for Service Component
         Create relationship upon allocation

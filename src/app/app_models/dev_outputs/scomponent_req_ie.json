@@ -12,8 +12,8 @@
         "domain": {
           "id": "urn:ngsi-ld:Domain:1",
           "type": "Domain",
-          "description": "NCSRD aeriOS MVP Domain",
-          "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+          "description": "NCSRD aerOS MVP Domain",
+          "publicUrl": "https://ncsrd-mvp-domain.aeros-project.eu",
           "owner": {
             "id": "urn:ngsi-ld:Organization:NCSRD",
             "type": "Organization",
@@ -30,8 +30,8 @@
           "domain": {
             "id": "urn:ngsi-ld:Domain:1",
             "type": "Domain",
-            "description": "NCSRD aeriOS MVP Domain",
-            "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+            "description": "NCSRD aerOS MVP Domain",
+            "publicUrl": "https://ncsrd-mvp-domain.aeros-project.eu",
             "owner": {
               "id": "urn:ngsi-ld:Organization:NCSRD",
               "type": "Organization",
@@ -91,8 +91,8 @@
       "domain": {
         "id": "urn:ngsi-ld:Domain:1",
         "type": "Domain",
-        "description": "NCSRD aeriOS MVP Domain",
-        "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+        "description": "NCSRD aerOS MVP Domain",
+        "publicUrl": "https://ncsrd-mvp-domain.aeros-project.eu",
         "owner": {
           "id": "urn:ngsi-ld:Organization:NCSRD",
           "type": "Organization",
@@ -109,8 +109,8 @@
         "domain": {
           "id": "urn:ngsi-ld:Domain:1",
           "type": "Domain",
-          "description": "NCSRD aeriOS MVP Domain",
-          "publicUrl": "https://ncsrd-mvp-domain.aeriOS-project.eu",
+          "description": "NCSRD aerOS MVP Domain",
+          "publicUrl": "https://ncsrd-mvp-domain.aeros-project.eu",
           "owner": {
             "id": "urn:ngsi-ld:Organization:NCSRD",
             "type": "Organization",

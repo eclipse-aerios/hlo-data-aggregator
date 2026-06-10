@@ -6,7 +6,7 @@ import os
 # Set DEV to False when building production container images
 DEV = False
 if DEV:
-    # API_URL = 'https://ncsrd-mvp-domain.aeriOS-project.eu'
+    # API_URL = 'https://ncsrd-mvp-domain.aeros-project.eu'
     # API_PORT = '443'
     # URL_VERSION = ''
     # Orion-LD configuration

@@ -1,22 +1,24 @@
 '''
     Protobuf and kafka related functions
 '''
-from typing import List
+from typing import List, Optional
+from threading import Lock
 from confluent_kafka import Producer, KafkaException
 from app.config import PRODUCER_TOPIC, producer_config, DEV
 from app.utils.log import get_app_logger
-from app.app_models.py_files import data_aggregator_pb2 as aggregator
-from app.app_models.py_files import hlo_pb2 as hlo
-from app.app_models import aeriOS_continuum as aeriOS_c
+from app.app_models.protobuf.generated import data_aggregator_pb2 as aggregator
+from app.app_models.protobuf.generated import hlo_pb2 as hlo
+from app.app_models.api import aeros_continuum as aeros_c
+from app.utils import errors
 
 logger = get_app_logger()
 
 ###################################################
-############ aeriOS Pydantic to Protobuf  ##########
+############ aerOS Pydantic to Protobuf  ##########
 
 
 def get_proto_envvars(
-    payload: List[aeriOS_c.ServiceComponentKeyValue]
+    payload: List[aeros_c.ServiceComponentKeyValue]
 ) -> List[hlo.ServiceComponentKeyValue]:
     """
         get protobuf envVars
@@ -32,7 +34,7 @@ def get_proto_envvars(
 
 
 def get_proto_cliargs(
-    payload: List[aeriOS_c.ServiceComponentKeyValue]
+    payload: List[aeros_c.ServiceComponentKeyValue]
 ) -> List[hlo.ServiceComponentKeyValue]:
     """
         get protobuf cliArgs
@@ -47,18 +49,44 @@ def get_proto_cliargs(
     return cli_args
 
 
-def get_proto_ports(payload: List[aeriOS_c.NetworkPort]) -> List[hlo.Port]:
-    """
-        get protobuf NetworkPorts
-    """
-    ports: List[hlo.Port] = []
+PROTO_PROTOCOL_MAP = {
+    "TCP": hlo.PortProtocol.TCP,  # pylint: disable=no-member
+    "UDP": hlo.PortProtocol.UDP,  # pylint: disable=no-member
+    "SCTP": hlo.PortProtocol.SCTP,  # pylint: disable=no-member
+}
+
+
+def get_proto_ports(payload: list[aeros_c.NetworkPort]) -> list[hlo.Port]:
+    '''
+    get a list of aeros_c.NetworkPort and return a list of protobuf Port messages
+    
+    :param payload: list of NetworkPort which at this time should be of type continuum NetworkPort
+    :type payload: list[aeros_c.NetworkPort]
+    :return: list of protobuf Port messages
+    :rtype: list
+    '''
+    ports: list[hlo.Port] = []
+
     for p in payload:
-        port = hlo.Port(number=p.portNumber)
-        ports.append(port)
+        if not isinstance(p, aeros_c.NetworkPort):
+            # at that time it should be NetworkPort, but if not, we can skip it or log a warning
+            logger.warning("Expected NetworkPort, got %s. Skipping.", type(p))
+            continue
+
+        proto_protocol = PROTO_PROTOCOL_MAP.get(
+            (p.portProtocol or "").upper(),
+            hlo.PortProtocol.PORT_PROTOCOL_UNSPECIFIED,
+        )
+
+        ports.append(hlo.Port(
+            number=p.portNumber,
+            protocol=proto_protocol,
+        ))
+
     return ports
 
 
-def get_proto_service(payload: aeriOS_c.Service) -> hlo.Service:
+def get_proto_service(payload: aeros_c.Service) -> hlo.Service:
     """
         get protobuf Service
     """
@@ -68,7 +96,7 @@ def get_proto_service(payload: aeriOS_c.Service) -> hlo.Service:
 
 
 def get_service_component_constraints(
-    payload: aeriOS_c.InfrastructureElementRequirements
+    payload: aeros_c.InfrastructureElementRequirements
 ) -> hlo.ServiceComponentConstraints:
     """
         get protobuf ServiceComponentConstraints
@@ -95,7 +123,7 @@ def get_service_component_constraints(
     return service_component_constraints
 
 
-def get_proto_domain(payload: aeriOS_c.Domain) -> hlo.Domain:
+def get_proto_domain(payload: aeros_c.Domain) -> hlo.Domain:
     """
         get protobuf domain
     """
@@ -105,7 +133,7 @@ def get_proto_domain(payload: aeriOS_c.Domain) -> hlo.Domain:
 
 
 def get_proto_llo(
-        payload: aeriOS_c.LowLevelOrchestrator) -> hlo.LowLevelOrchestrator:
+        payload: aeros_c.LowLevelOrchestrator) -> hlo.LowLevelOrchestrator:
     """
         get protobuf LLO
     """
@@ -117,7 +145,7 @@ def get_proto_llo(
 
 
 def get_protobuf_ie(
-        payload: aeriOS_c.InfrastructureElement) -> hlo.InfrastructureElement:
+        payload: aeros_c.InfrastructureElement) -> hlo.InfrastructureElement:
     """
         get protobuf ie
     """
@@ -128,7 +156,7 @@ def get_protobuf_ie(
     ie_proto.cpu_cores = payload.cpuCores
     ie_proto.avg_power_consumption = payload.avgPowerConsumption
     ie_proto.real_time_capable = payload.realTimeCapable
-    ie_proto.current_ram = payload.currentCpuUsage
+    ie_proto.current_ram = payload.currentRamUsage
     ie_proto.current_cpu_usage = payload.currentCpuUsage
     ie_proto.current_power_consumption = payload.currentPowerConsumption
     ie_proto.domain.id = get_proto_domain(payload.domain).id
@@ -140,7 +168,7 @@ def get_protobuf_ie(
 
 
 def get_service_components(
-        payload: aeriOS_c.ServiceComponent) -> hlo.ServiceComponent:
+        payload: aeros_c.ServiceComponent) -> hlo.ServiceComponent:
     """
         get protobuf service components
     """
@@ -152,8 +180,8 @@ def get_service_components(
 
     # Somethings are only needed when allocating
     if payload.serviceComponentStatus in [
-            aeriOS_c.ServiceComponentStatusEnum.STARTING,
-            aeriOS_c.ServiceComponentStatusEnum.OVERLOAD
+            aeros_c.ServiceComponentStatusEnum.STARTING,
+            aeros_c.ServiceComponentStatusEnum.OVERLOAD
     ]:
         service_components_proto.exposePorts = payload.exposePorts
         service_components_proto.isJob = payload.isJob
@@ -177,9 +205,9 @@ def get_service_components(
 
     # When deleting service IE is already in service component definition
     if payload.serviceComponentStatus in [
-            aeriOS_c.ServiceComponentStatusEnum.REMOVING,
-            aeriOS_c.ServiceComponentStatusEnum.MIGRATING,
-            aeriOS_c.ServiceComponentStatusEnum.OVERLOAD
+            aeros_c.ServiceComponentStatusEnum.REMOVING,
+            aeros_c.ServiceComponentStatusEnum.MIGRATING,
+            aeros_c.ServiceComponentStatusEnum.OVERLOAD
     ]:
         selected_ie = get_protobuf_ie(payload=payload.infrastructureElement)
         service_components_proto.infrastructure_element.MergeFrom(selected_ie)
@@ -188,7 +216,7 @@ def get_service_components(
 
 
 def get_service_component_requirement(
-    payload: aeriOS_c.ServiceComponentRequirement
+    payload: aeros_c.ServiceComponentRequirement
 ) -> aggregator.ServiceComponentRequirement:
     """
         get protobuf Service Component Requirments
@@ -205,7 +233,7 @@ def get_service_component_requirement(
 
 
 def create_hloallocator_output(
-        payload: aeriOS_c.HLOAllocatorOutput) -> aggregator.HLOAllocatorOutput:
+        payload: aeros_c.HLOAllocatorOutput) -> aggregator.HLOAllocatorOutput:
     """
         Create kafka protobuf message for HLO_ALLOCATOR
     """
@@ -236,6 +264,146 @@ def create_fake_feinput():
     return message
 
 
+_producer: Optional[Producer] = None
+_producer_lock = Lock()
+
+
+def _get_producer() -> Producer:
+    '''
+    Get a singleton Kafka producer instance, initializing it if necessary.
+    '''
+    global _producer
+
+    if _producer is None:
+        with _producer_lock:
+            if _producer is None:
+                try:
+                    _producer = Producer(producer_config)
+                    logger.info("Kafka producer initialized")
+                except Exception as ex:
+                    raise errors.ServiceUnavailableError(
+                        f"Failed to initialize Kafka producer: {ex}") from ex
+
+    return _producer
+
+
+def _discard_outstanding_messages(producer: Producer) -> None:
+    '''
+    Discard any outstanding messages in the producer's queue and in-flight messages.
+    '''
+    try:
+        producer.purge(in_queue=True, in_flight=True, blocking=True)
+    except Exception as ex:
+        logger.warning("Kafka producer purge failed during reset: %s", ex)
+
+    try:
+        producer.flush(timeout=1)
+    except Exception as ex:
+        logger.warning("Kafka producer final flush failed during reset: %s",
+                       ex)
+
+
+def reset_producer() -> None:
+    '''
+        Reset the Kafka producer by discarding outstanding messages and reinitializing.
+    '''
+    global _producer
+
+    with _producer_lock:
+        if _producer is not None:
+            _discard_outstanding_messages(_producer)
+            _producer = None
+            logger.warning("Kafka producer reset")
+
+
+def produce_message(payload2allocator, timeout: float = 10.0) -> None:
+    """
+    Produce allocator output to Kafka and wait for delivery confirmation.
+    """
+    producer = _get_producer()
+
+    delivery_error = None
+    delivered = False
+
+    def on_delivery(err, msg) -> None:
+        nonlocal delivery_error, delivered
+
+        if err is not None:
+            err_str = str(err)
+
+            if "Purged in queue" in err_str or "Purged in flight" in err_str:
+                logger.warning(
+                    "Kafka message purged during cleanup: %s",
+                    err,
+                )
+                return
+
+            delivery_error = err
+            logger.error("Kafka delivery failed: %s", err)
+            return
+
+        delivered = True
+        logger.info(
+            "Message delivered to %s [%s] offset %s",
+            msg.topic(),
+            msg.partition(),
+            msg.offset(),
+        )
+
+    message = create_hloallocator_output(payload=payload2allocator)
+    logger.info("Protobuf message: %s", message)
+
+    protobuf_msg = serialize_to_bytes(message)
+
+    if DEV:
+        logger.info("Binary message: %s", protobuf_msg)
+
+    try:
+        producer.produce(
+            topic=PRODUCER_TOPIC,
+            value=protobuf_msg,
+            callback=on_delivery,
+        )
+    except BufferError as ex:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Kafka local producer queue is full: {ex}") from ex
+    except KafkaException as ex:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Kafka enqueue failed: {ex}") from ex
+    except Exception as ex:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Unexpected Kafka enqueue failure: {ex}") from ex
+
+    try:
+        remaining = producer.flush(timeout=timeout)
+    except KafkaException as ex:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Kafka flush failed: {ex}") from ex
+    except Exception as ex:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Unexpected Kafka flush failure: {ex}") from ex
+
+    if remaining > 0:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Kafka flush timed out; {remaining} undelivered messages remain")
+
+    if delivery_error is not None:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            f"Kafka delivery failed: {delivery_error}")
+
+    if not delivered:
+        reset_producer()
+        raise errors.ServiceUnavailableError(
+            "Kafka message was not confirmed as delivered")
+
+
 def serialize_to_bytes(data_output):
     '''
         Binary Serialize string to be sent to kafka as protobuf message
@@ -250,52 +418,6 @@ def parse_from_bytes(data):
     feinput = aggregator.HLOFEInput()
     feinput.ParseFromString(data)
     return feinput
-
-
-def on_delivery(err, msg):
-    '''
-     Callback for kafka delivering message
-    '''
-    if err is not None:
-        logger.error('Delivery failed: %s', err)
-    else:
-        logger.info('Message delivered to %s [%s]', msg.topic(),
-                    msg.partition())
-
-
-###################################################
-############ KAFKA RELATED  #######################
-
-
-def produce_message(payload2allocator):
-    '''
-    Deliver message to redpanda
-    '''
-    producer = Producer(producer_config)
-    # Create protobuf message for redpanda
-    # According to protobuf service data model
-    # And (binary) serialize it
-    message = create_hloallocator_output(payload=payload2allocator)
-    logger.info('Protobuf Message: %s', message)
-    protobuf_msg = serialize_to_bytes(message)
-    if DEV:
-        logger.info('Binary message: %s', protobuf_msg)
-
-    try:
-        # Sending a message to the topic
-        producer.produce(topic=PRODUCER_TOPIC,
-                         value=protobuf_msg,
-                         callback=on_delivery)
-
-        # Wait for delivery confirmation
-        producer.poll(5)
-
-    except KafkaException as e:
-        logger.error('Kafka Error: %s', e)
-
-    finally:
-        # Close the producer
-        producer.flush()
 
 
 if __name__ == "__main__":
