@@ -133,7 +133,7 @@ class ServiceComponentKeyValue(BaseModel):
         Added to model cliArgs according to CRD
     '''
     key: str
-    value: Optional[str] = None
+    value: Optional[str | dict] = None
 
 
 class ServiceComponent(BaseModel):
@@ -150,6 +150,8 @@ class ServiceComponent(BaseModel):
     serviceComponentStatus: Optional[str | ServiceComponentStatus] = None
     infrastructureElementRequirements: str | InfrastructureElementRequirements
     containerImage: str
+    containerResource: Optional[str] = None
+    containerType: Optional[str] = "Docker"
     networkPorts: Optional[List[str] | List[NetworkPort]] = None
     envVars: Optional[List[ServiceComponentKeyValue]] = []
     cliArgs: Optional[List[ServiceComponentKeyValue]] = []
@@ -158,6 +160,8 @@ class ServiceComponent(BaseModel):
     isPrivate: Optional[bool] = None
     repoUsername: Optional[str] = None
     repoPassword: Optional[str] = None
+    namespace: Optional[str] = None
+    timeout: Optional[str] = None
 
 
 #######
@@ -185,6 +189,7 @@ class ServiceComponentStatusEnum:
     """
     RUNNING = "urn:ngsi-ld:ServiceComponentStatus:Running"
     STARTING = "urn:ngsi-ld:ServiceComponentStatus:Starting"
+    UPDATING = "urn:ngsi-ld:ServiceComponentStatus:Updating"
     OVERLOAD = "urn:ngsi-ld:ServiceComponentStatus:Overload"
     FAILED = "urn:ngsi-ld:ServiceComponentStatus:Failed"
     MIGRATING = "urn:ngsi-ld:ServiceComponentStatus:Migrating"

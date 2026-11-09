@@ -55,6 +55,9 @@ message ServiceComponent {
     bool isJob = 10;
     bool is_private = 11;
     RepoCredentials credentials = 12;
+    string containerType = 13;
+    string namespace = 14;
+    string timeout = 15;
 }
 
 message ServiceComponentConstraints {
