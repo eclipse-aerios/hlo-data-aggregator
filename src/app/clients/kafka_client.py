@@ -3,6 +3,7 @@
 '''
 from typing import List, Optional
 from threading import Lock
+import json
 from confluent_kafka import Producer, KafkaException
 from app.config import PRODUCER_TOPIC, producer_config, DEV
 from app.utils.log import get_app_logger
@@ -18,14 +19,18 @@ logger = get_app_logger()
 
 
 def get_proto_envvars(
-    payload: List[aeros_c.ServiceComponentKeyValue]
+    payload: List[aeros_c.ServiceComponentKeyValue],
+    container_type: str = "Docker",
 ) -> List[hlo.ServiceComponentKeyValue]:
     """
         get protobuf envVars
     """
     env_vars: List[hlo.ServiceComponentKeyValue] = []
     for item in payload:
-        if item.value:
+        if container_type == "HelmChart" and item.key == "VALUES" and isinstance(item.value, dict):
+            # Protobuf/REST values remain strings; avoid encoding existing JSON twice.
+            arg = hlo.ServiceComponentKeyValue(key=item.key, value=json.dumps(item.value))
+        elif item.value:
             arg = hlo.ServiceComponentKeyValue(key=item.key, value=item.value)
         else:
             arg = hlo.ServiceComponentKeyValue(key=item.key, value="")
@@ -175,16 +180,21 @@ def get_service_components(
     service_components_proto = hlo.ServiceComponent()
     # Service COmponents Fields needed in all actions:
     service_components_proto.id = payload.id
-    service_components_proto.image = payload.containerImage
+    service_components_proto.image = (payload.containerResource or payload.containerImage
+                                      if payload.containerType == "HelmChart" else payload.containerImage)
+    service_components_proto.containerType = payload.containerType or "Docker"
+    service_components_proto.namespace = payload.namespace or ""
+    service_components_proto.timeout = payload.timeout or ""
     service_components_proto.service.id = payload.service  # get_proto_service(payload=payload.service)
 
     # Somethings are only needed when allocating
     if payload.serviceComponentStatus in [
             aeros_c.ServiceComponentStatusEnum.STARTING,
+            aeros_c.ServiceComponentStatusEnum.UPDATING,
             aeros_c.ServiceComponentStatusEnum.OVERLOAD
     ]:
-        service_components_proto.exposePorts = payload.exposePorts
-        service_components_proto.isJob = payload.isJob
+        service_components_proto.exposePorts = payload.exposePorts or False
+        service_components_proto.isJob = payload.isJob or False
         # Set is_private flag
         service_components_proto.is_private = payload.isPrivate or False  # or default to False
         # Only set credentials if is_private is True
@@ -192,20 +202,22 @@ def get_service_components(
             service_components_proto.credentials.username = payload.repoUsername or ""
             service_components_proto.credentials.password = payload.repoPassword or ""
         service_components_proto.cliArgs.extend(
-            get_proto_cliargs(payload=payload.cliArgs))
+            get_proto_cliargs(payload=payload.cliArgs or []))
         service_components_proto.envVars.extend(
-            get_proto_envvars(payload=payload.envVars))
+            get_proto_envvars(payload=payload.envVars or [], container_type=payload.containerType))
         service_components_proto.ports.extend(
-            get_proto_ports(payload=payload.networkPorts))
-        constraints = get_service_component_constraints(
-            payload=payload.infrastructureElementRequirements)
-        if constraints:
-            service_components_proto.service_component_constraints.MergeFrom(
-                constraints)
+            get_proto_ports(payload=payload.networkPorts or []))
+        if payload.serviceComponentStatus != aeros_c.ServiceComponentStatusEnum.UPDATING:
+            constraints = get_service_component_constraints(
+                payload=payload.infrastructureElementRequirements)
+            if constraints:
+                service_components_proto.service_component_constraints.MergeFrom(
+                    constraints)
 
     # When deleting service IE is already in service component definition
     if payload.serviceComponentStatus in [
             aeros_c.ServiceComponentStatusEnum.REMOVING,
+            aeros_c.ServiceComponentStatusEnum.UPDATING,
             aeros_c.ServiceComponentStatusEnum.MIGRATING,
             aeros_c.ServiceComponentStatusEnum.OVERLOAD
     ]:
