@@ -29,7 +29,7 @@ class HelmPatchAggregationTests(unittest.TestCase):
              patch.object(NGSI, "get_helm_candidate") as eligibility, \
              patch.object(NGSI, "CBClient") as discovery:
             result = NGSI.create_service_component_requirement(request)
-        resolve.assert_called_once_with(actual.id)
+        resolve.assert_called_once_with(actual.id, for_update=True)
         eligibility.assert_not_called()
         discovery.assert_not_called()
         self.assertEqual(result.infrastructure_element_candidates, [])

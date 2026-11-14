@@ -11,6 +11,9 @@ from app.clients.kafka_client import produce_message
 from app.utils.log import get_app_logger
 from app.config import DEV
 from app.utils import errors
+from app.services.native_patch import (validate_native_component, validate_update_identity,
+                                       validate_update_domain_url, validate_native_metadata,
+                                       NativeUpdateMetadataError)
 
 logger = get_app_logger()
 
@@ -20,66 +23,96 @@ cached_llo = {}
 cached_ie = {}
 
 
-def get_aeros_orginization(entity_id) -> aeros_C.Organization:
+def _check_update_entity(entity, entity_id, entity_type):
+    """Reject redirected/missing broker results before UPDATE enrichment."""
+    if (not isinstance(entity_id, str) or not entity_id or entity_id == "urn:ngsi-ld:null"
+            or not isinstance(entity, dict) or entity.get("id") != entity_id
+            or entity.get("type") != entity_type):
+        raise errors.InvalidArgumentError(f"Invalid assigned UPDATE {entity_type} identity")
+
+
+def get_aeros_orginization(entity_id, for_update=False) -> aeros_C.Organization:
     """Get Organization from AEROS"""
-    org_py = cached_organizations.get(entity_id, None)
+    org_py = None if for_update else cached_organizations.get(entity_id, None)
     if not org_py:
         cb_client = CBClient()
         aeros_org_json = cb_client.query_entity(
             entity_id=entity_id, ngsild_params='format=simplified')
+        if for_update:
+            _check_update_entity(aeros_org_json, entity_id, "Organization")
         if aeros_org_json:
             org_py = aeros_C.Organization(**aeros_org_json)
         else:
             org_py = entity_id
-        cached_organizations[entity_id] = org_py
+        if not for_update:
+            cached_organizations[entity_id] = org_py
     return org_py
 
 
-def get_aeros_domain(entity_id) -> aeros_C.Domain:
+def get_aeros_domain(entity_id, for_update=False) -> aeros_C.Domain:
     """Get Domain from AEROS"""
-    domain_py = cached_domains.get(entity_id)
+    if for_update and isinstance(entity_id, aeros_C.Domain):
+        entity_id = entity_id.id
+    domain_py = None if for_update else cached_domains.get(entity_id)
     if not domain_py:
         cb_client = CBClient()
         aeros_domain_json = cb_client.query_entity(
             entity_id=entity_id, ngsild_params='format=simplified')
+        if for_update:
+            _check_update_entity(aeros_domain_json, entity_id, "Domain")
         domain_py = aeros_C.Domain(**aeros_domain_json)
-        org_py = get_aeros_orginization(
-            domain_py.owner[0])  # FIXME, will there be many Owners ?
-        domain_py.owner = org_py
-        cached_domains[entity_id] = domain_py
+        if for_update:
+            if isinstance(domain_py.owner, list) and domain_py.owner:
+                domain_py.owner = get_aeros_orginization(domain_py.owner[0], for_update=True)
+        else:
+            org_py = get_aeros_orginization(
+                domain_py.owner[0])  # FIXME, will there be many Owners ?
+            domain_py.owner = org_py
+            cached_domains[entity_id] = domain_py
     return domain_py
 
 
-def get_aeros_llo(entity_id) -> aeros_C.LowLevelOrchestrator:
+def get_aeros_llo(entity_id, for_update=False) -> aeros_C.LowLevelOrchestrator:
     """Get LowLevelOrchestrator from AEROS"""
-    aeros_llo_py = cached_llo.get(entity_id)
+    if for_update and isinstance(entity_id, aeros_C.LowLevelOrchestrator):
+        entity_id = entity_id.id
+    aeros_llo_py = None if for_update else cached_llo.get(entity_id)
     if not aeros_llo_py:
         cb_client = CBClient()
         aeros_llo_json = cb_client.query_entity(
             entity_id=entity_id, ngsild_params='format=simplified')
+        if for_update:
+            _check_update_entity(aeros_llo_json, entity_id, "LowLevelOrchestrator")
         aeros_llo_py = aeros_C.LowLevelOrchestrator(**aeros_llo_json)
-        domain_py = get_aeros_domain(aeros_llo_py.domain)
+        domain_py = (get_aeros_domain(aeros_llo_py.domain, for_update=True) if for_update
+                     else get_aeros_domain(aeros_llo_py.domain))
         aeros_llo_py.domain = domain_py
-        cached_llo[entity_id] = aeros_llo_py
+        if not for_update:
+            cached_llo[entity_id] = aeros_llo_py
     return aeros_llo_py
 
 
-def get_aeros_ie(entity_id) -> aeros_C.InfrastructureElement:
+def get_aeros_ie(entity_id, for_update=False) -> aeros_C.InfrastructureElement:
     """Get infrastructure element from AEROS"""
     if isinstance(entity_id, aeros_C.InfrastructureElement):
         return entity_id  # already resolved
 
-    aeros_ie_py = cached_ie.get(entity_id)
+    aeros_ie_py = None if for_update else cached_ie.get(entity_id)
     if not aeros_ie_py:
         cb_client = CBClient()
         aeros_ie_json = cb_client.query_entity(
             entity_id=entity_id, ngsild_params='format=simplified')
+        if for_update:
+            _check_update_entity(aeros_ie_json, entity_id, "InfrastructureElement")
         aeros_ie_py = aeros_C.InfrastructureElement(**aeros_ie_json)
-        domain = get_aeros_domain(aeros_ie_py.domain)
-        llo = get_aeros_llo(aeros_ie_py.lowLevelOrchestrator)
+        domain = (get_aeros_domain(aeros_ie_py.domain, for_update=True) if for_update
+                  else get_aeros_domain(aeros_ie_py.domain))
+        llo = (get_aeros_llo(aeros_ie_py.lowLevelOrchestrator, for_update=True) if for_update
+               else get_aeros_llo(aeros_ie_py.lowLevelOrchestrator))
         aeros_ie_py.domain = domain
         aeros_ie_py.lowLevelOrchestrator = llo
-        cached_ie[entity_id] = aeros_ie_py
+        if not for_update:
+            cached_ie[entity_id] = aeros_ie_py
     return aeros_ie_py
 
 
@@ -162,6 +195,18 @@ def get_service_components(entity_id) -> List[aeros_C.ServiceComponent]:
 
     service_components_list_json = cb_client.query_entities(
         f'format=simplified&type=ServiceComponent&q=service=="{entity_id}"')
+    for item in service_components_list_json:
+        if (isinstance(item, dict)
+                and item.get("serviceComponentStatus") == aeros_C.ServiceComponentStatusEnum.UPDATING
+                and item.get("containerType") in (None, "", "Docker")):
+            try:
+                validate_native_metadata(item)
+            except ValueError as exc:
+                update_ids = [entry["id"] for entry in service_components_list_json
+                              if isinstance(entry, dict)
+                              and entry.get("serviceComponentStatus") == aeros_C.ServiceComponentStatusEnum.UPDATING
+                              and isinstance(entry.get("id"), str) and entry["id"]]
+                raise NativeUpdateMetadataError(str(exc), update_ids) from exc
     service_components_py = [
         aeros_C.ServiceComponent(**item)
         for item in service_components_list_json
@@ -246,28 +291,69 @@ def create_service_component_requirement(
     helm_placement = (scomponent_py.containerType == "HelmChart" and
                       scomponent_py.serviceComponentStatus == aeros_C.ServiceComponentStatusEnum.STARTING)
     if scomponent_py.serviceComponentStatus == aeros_C.ServiceComponentStatusEnum.UPDATING:
-        if scomponent_py.containerType != "HelmChart":
-            logger.warning("Updates are supported only for Helm component %s", scomponent_py.id)
+        try:
+            validate_update_identity(scomponent_py)
+        except ValueError:
+            logger.exception("Invalid persisted identity for update %s", scomponent_py.id)
             return None
+        if scomponent_py.containerType not in (None, "", "Docker", "HelmChart"):
+            logger.warning("Unsupported stored workload type for update %s", scomponent_py.id)
+            return None
+        if scomponent_py.containerType != "HelmChart":
+            try:
+                validate_native_component(scomponent_py)
+            except ValueError:
+                logger.exception("Invalid native update metadata for %s", scomponent_py.id)
+                return None
         assignment = scomponent_py.infrastructureElement
         assigned_id = assignment.id if isinstance(assignment, aeros_C.InfrastructureElement) else assignment
         if not assigned_id or assigned_id == "urn:ngsi-ld:null":
             logger.warning("Updating component %s has no current assignment", scomponent_py.id)
             return None
         try:
-            assigned_ie = get_aeros_ie(assignment)
-            scomponent_py.networkPorts = (get_aeros_scomponents_ports(scomponent_py.networkPorts)
-                                         if scomponent_py.networkPorts else [])
+            assigned_ie = get_aeros_ie(assignment, for_update=True)
         except (ValidationError, TypeError, KeyError, IndexError, errors.aeriosError):
             logger.exception("Unable to resolve current assignment for update %s", scomponent_py.id)
             return None
         if (not isinstance(assigned_ie, aeros_C.InfrastructureElement)
+                or assigned_ie.type != "InfrastructureElement"
                 or assigned_ie.id != assigned_id or not assigned_ie.hostname
                 or not isinstance(assigned_ie.domain, aeros_C.Domain)
                 or not isinstance(assigned_ie.lowLevelOrchestrator, aeros_C.LowLevelOrchestrator)):
             logger.warning("Updating component %s has incomplete assignment metadata", scomponent_py.id)
             return None
+        if (assigned_ie.containerTechnology not in ("Docker", "Kubernetes")
+                or (scomponent_py.containerType == "HelmChart"
+                    and assigned_ie.containerTechnology != "Kubernetes")):
+            logger.warning("Workload and assigned backend do not support update %s", scomponent_py.id)
+            return None
+        domain = assigned_ie.domain
+        llo = assigned_ie.lowLevelOrchestrator
+        llo_domain_id = llo.domain.id if isinstance(llo.domain, aeros_C.Domain) else llo.domain
+        try:
+            validate_update_domain_url(domain.publicUrl)
+        except ValueError:
+            return None
+        if (not domain.id or domain.id == "urn:ngsi-ld:null"
+                or not llo.id or llo.id == "urn:ngsi-ld:null"
+                or llo_domain_id != domain.id):
+            logger.warning("Updating component %s has invalid domain/LLO routing", scomponent_py.id)
+            return None
+        try:
+            if scomponent_py.networkPorts and all(
+                    isinstance(port, aeros_C.NetworkPort) for port in scomponent_py.networkPorts):
+                ports = scomponent_py.networkPorts
+            else:
+                ports = (get_aeros_scomponents_ports(scomponent_py.networkPorts)
+                         if scomponent_py.networkPorts else [])
+            if scomponent_py.networkPorts and len(ports) != len(scomponent_py.networkPorts):
+                logger.warning("Updating component %s has unresolved port metadata", scomponent_py.id)
+                return None
+        except (ValidationError, TypeError, KeyError, IndexError, errors.aeriosError):
+            logger.exception("Unable to resolve update ports for %s", scomponent_py.id)
+            return None
         service_component_definition.infrastructureElement = assigned_ie
+        service_component_definition.networkPorts = ports
         # No initial-placement filtering, discovery or candidate selection on updates.
     elif scomponent_py.serviceComponentStatus == aeros_C.ServiceComponentStatusEnum.REMOVING:
         # No candidate elements. means we are removing service component
@@ -375,6 +461,7 @@ def create_hlo_allocator_py(service_id) -> aeros_C.HLOAllocatorOutput:
     """
     succeed = True
     updating_components = []
+    invalid_update_ids = None
     try:
         scomponents_py = get_service_components(entity_id=service_id)
         updating_components = [component for component in scomponents_py
@@ -386,8 +473,14 @@ def create_hlo_allocator_py(service_id) -> aeros_C.HLOAllocatorOutput:
                 # A service-ID update event applies only to its UPDATING targets.
                 # Omitted components retain their statuses and existing allocation.
                 continue
-            item = create_service_component_requirement(
-                scomponent_py=scomponent_py)
+            if updating_components:
+                try:
+                    validate_update_identity(scomponent_py, service_id)
+                except ValueError:
+                    logger.exception("Update component does not belong to requested Service %s", service_id)
+                    succeed = False
+                    continue
+            item = create_service_component_requirement(scomponent_py=scomponent_py)
             # Failed to create Service Component Requirments (find IE candidates)
             if not item:
                 item_succeed = False
@@ -395,22 +488,28 @@ def create_hlo_allocator_py(service_id) -> aeros_C.HLOAllocatorOutput:
                 service_component_requirements.append(item)
                 item_succeed = True
             succeed &= item_succeed
+    except NativeUpdateMetadataError as exc:
+        succeed = False
+        invalid_update_ids = exc.component_ids
+        logger.exception("Invalid retained native metadata for requested update")
     except TypeError:
         succeed = False
         logger.exception("Error buildng aerOS continuum  pydantic entities")
 
     if not succeed:
-        if updating_components:
+        if updating_components or invalid_update_ids is not None:
             logger.info("Setting only requested update components to failed state")
-            for component in updating_components:
+            update_ids = (invalid_update_ids if invalid_update_ids is not None
+                          else [component.id for component in updating_components])
+            for component_id in update_ids:
                 try:
                     c_utils.set_service_component_status(
-                        scomponent_id=component.id,
+                        scomponent_id=component_id,
                         scomponent_status=aeros_C.ServiceComponentStatusEnum.FAILED)
                 except errors.aeriosError:
                     # Do not let the consumer's all-service rollback affect
                     # unrelated components if this targeted rollback also fails.
-                    logger.exception("Unable to mark failed update component %s", component.id)
+                    logger.exception("Unable to mark failed update component %s", component_id)
         else:
             logger.info("Setting to failed state service components")
             c_utils.set_service_failed(service_id=service_id)
